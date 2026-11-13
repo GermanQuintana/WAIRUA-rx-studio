@@ -14,3 +14,60 @@ const originalLoadImage=load;load=async function(file){if(!file)return;const pre
 const previousLanguage=setLanguage;setLanguage=function(lang){previousLanguage(lang);$('#patientName').placeholder=isEn()?'Patient name':'Nombre del paciente';$('#patientBreed').placeholder=isEn()?'Breed':'Raza';$('#patientId').placeholder=isEn()?'Record / ID':'Historia / ID';$('#studyNotes').placeholder=isEn()?'Notes':'Observaciones';$('#rotateLeft').title=isEn()?'Rotate 90° left':'Girar 90° a la izquierda';$('#rotateRight').title=isEn()?'Rotate 90° right':'Girar 90° a la derecha';$('#rotate180').title=isEn()?'Rotate 180°':'Girar 180°';$('#flipHorizontal').title=isEn()?'Flip horizontally':'Reflejar horizontalmente';$('#clinicName').placeholder=isEn()?'Clinic name':'Nombre del centro';$('#vetName').placeholder=isEn()?'Professional name':'Nombre profesional';$('#licenseNumber').placeholder=isEn()?'License number':'Número de colegiado';$('#clinicContact').placeholder=isEn()?'Telephone or email':'Teléfono o correo';$('#theme').textContent=document.body.classList.contains('light')?(isEn()?'Dark mode':'Modo oscuro'):(isEn()?'Light mode':'Modo claro');if(labelMode)$('#labelMode').textContent=isEn()?'Cancel label':'Cancelar rótulo'};setLanguage(isEn()?'en':'es');
 
 const profileKeys=['clinicName','vetName','licenseNumber','clinicContact'];let clinicProfile={};try{clinicProfile=JSON.parse(localStorage.getItem('wairua-clinic-profile')||'{}')}catch{}for(const key of profileKeys){const field=$('#'+key);field.value=clinicProfile[key]||'';field.addEventListener('input',()=>{clinicProfile[key]=field.value;try{localStorage.setItem('wairua-clinic-profile',JSON.stringify(clinicProfile))}catch{}})}$('#clearProfile').onclick=()=>{clinicProfile={};localStorage.removeItem('wairua-clinic-profile');for(const key of profileKeys)$('#'+key).value=''};
+
+
+// Viewport pan is stored in screen pixels; measurement and annotation points
+// remain in image coordinates and use the same rect() transform when rendered.
+let panX=0,panY=0,panMode=false,spacePan=false,panGesture=null,suppressPanClick=false;
+const unpannedRect=rect;
+rect=function(){const r=unpannedRect();return {...r,x:r.x+panX,y:r.y+panY}};
+labels['✥ Mover']='✥ Move';
+const panButton=document.createElement('button');
+panButton.id='panTool';panButton.type='button';panButton.textContent='✥ Mover';
+panButton.setAttribute('aria-pressed','false');
+$('.headtools').prepend(panButton);
+function panTitle(){return isEn()?'Drag image (or hold Space)':'Arrastrar imagen (o mantener pulsada la barra espaciadora)'}
+function panCursor(){canvas.style.cursor=(panMode||spacePan)?(panGesture?'grabbing':'grab'):(labelMode?'crosshair':'')}
+function setPanMode(active){panMode=active;panButton.classList.toggle('active',active);panButton.setAttribute('aria-pressed',String(active));if(active&&labelMode)$('#labelMode').click();panCursor()}
+panButton.title=panTitle();
+panButton.addEventListener('click',()=>setPanMode(!panMode));
+$('#labelMode').addEventListener('click',()=>{if(labelMode&&panMode)setPanMode(false);panCursor()});
+for(const id of ['languageES','languageEN'])$('#'+id).addEventListener('click',()=>{panButton.title=panTitle()});
+function isTyping(target){return target instanceof Element && (target.closest('input, textarea, select, button, [contenteditable="true"]'))}
+window.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&!isTyping(e.target)){spacePan=true;e.preventDefault();panCursor()}});
+window.addEventListener('keyup',e=>{if(e.code==='Space'){spacePan=false;panCursor()}});
+window.addEventListener('blur',()=>{spacePan=false;panGesture=null;panCursor()});
+stage.addEventListener('pointerdown',e=>{
+  suppressPanClick=false;
+  if(!image||e.target!==canvas||!(panMode||spacePan||e.button===1)||!(e.button===0||e.button===1))return;
+  e.preventDefault();e.stopPropagation();
+  panGesture={id:e.pointerId,x:e.clientX,y:e.clientY,startX:panX,startY:panY};
+  suppressPanClick=true;canvas.setPointerCapture(e.pointerId);panCursor();
+},true);
+stage.addEventListener('pointermove',e=>{
+  if(!panGesture||e.pointerId!==panGesture.id)return;
+  e.preventDefault();e.stopPropagation();
+  panX=panGesture.startX+e.clientX-panGesture.x;
+  panY=panGesture.startY+e.clientY-panGesture.y;draw();
+},true);
+function endPan(e){if(!panGesture||e.pointerId!==panGesture.id)return;e.preventDefault();e.stopPropagation();panGesture=null;panCursor()}
+stage.addEventListener('pointerup',endPan,true);
+stage.addEventListener('pointercancel',e=>{endPan(e);suppressPanClick=false},true);
+// Capture before both the measurement click handler and the label handler.
+stage.addEventListener('click',e=>{if(suppressPanClick||panMode||spacePan){e.preventDefault();e.stopImmediatePropagation();suppressPanClick=false}},true);
+// Preserve the image point under the pointer as the wheel changes the zoom.
+stage.addEventListener('wheel',e=>{
+  if(!image)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  const b=canvas.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;
+  const before=rect(),ix=(x-before.x)/before.s,iy=(y-before.y)/before.s;
+  zoom=Math.max(.4,Math.min(5,zoom*(e.deltaY<0?1.12:.89)));
+  const after=rect();panX+=x-(after.x+ix*after.s);panY+=y-(after.y+iy*after.s);
+  $('#zoomLabel').textContent=Math.round(zoom*100)+'%';draw();
+},{capture:true,passive:false});
+$('#resetImage').addEventListener('click',()=>{panX=panY=0;draw()});
+const panPreviousLoad=load;
+load=async function(file){const before=image;await panPreviousLoad(file);if(image!==before){panX=panY=0;setPanMode(false);draw()}};
+const panStyle=document.createElement('style');
+panStyle.textContent='.headtools #panTool.active{background:#b9ead4;color:#183c2d;border-color:#8cc7ad} .headtools #panTool:focus-visible{outline:2px solid #76cdb0;outline-offset:2px}';
+document.head.append(panStyle);if(isEn())translateVisible();
