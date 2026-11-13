@@ -71,3 +71,42 @@ load=async function(file){const before=image;await panPreviousLoad(file);if(imag
 const panStyle=document.createElement('style');
 panStyle.textContent='.headtools #panTool.active{background:#b9ead4;color:#183c2d;border-color:#8cc7ad} .headtools #panTool:focus-visible{outline:2px solid #76cdb0;outline-offset:2px}';
 document.head.append(panStyle);if(isEn())translateVisible();
+
+
+// Compact instructions stay available on hover, focus and touch.
+const viewerHelp=document.createElement('details');
+viewerHelp.className='viewer-help';
+viewerHelp.innerHTML='<summary aria-label="Ayuda del visor">i</summary><div class="viewer-help-panel"></div>';
+$('.workspacehead').append(viewerHelp);
+const helpPanel=viewerHelp.querySelector('.viewer-help-panel');
+const helpSummary=viewerHelp.querySelector('summary');
+const viewerTips={
+ panTool:['Activar o desactivar el desplazamiento. Arrastra la imagen; también puedes mantener pulsada la barra espaciadora.','Toggle panning. Drag the image, or hold the space bar.'],
+ invert:['Invertir los tonos claros y oscuros de la imagen.','Invert the image tones.'],
+ undo:['Deshacer el último punto de la medición actual.','Undo the last point in the current measurement.'],
+ clear:['Empezar de nuevo la medición actual.','Restart the current measurement.'],
+ brightness:['Ajustar el brillo de visualización.','Adjust the display brightness.'],
+ contrast:['Ajustar el contraste de visualización.','Adjust the display contrast.'],
+ rotateLeft:['Girar la imagen 90 grados a la izquierda.','Rotate the image 90 degrees left.'],
+ rotateRight:['Girar la imagen 90 grados a la derecha.','Rotate the image 90 degrees right.'],
+ rotate180:['Girar la imagen 180 grados.','Rotate the image 180 degrees.'],
+ flipHorizontal:['Reflejar la imagen horizontalmente.','Flip the image horizontally.'],
+ labelMode:['Activar la colocación de rótulos: haz clic sobre la imagen y escribe el texto.','Add labels: click the image and enter the text.'],
+ clearLabels:['Borrar los rótulos de la imagen actual.','Remove labels from the current image.'],
+ resetImage:['Restablecer zoom, posición, orientación y ajustes de imagen.','Reset zoom, position, orientation and image settings.'],
+ uploadTop:['Abrir una radiografía desde tu dispositivo.','Open a radiograph from your device.'],
+ upload:['Abrir una radiografía desde tu dispositivo.','Open a radiograph from your device.'],
+ theme:['Alternar entre modo claro y oscuro.','Switch between light and dark mode.'],
+ languageES:['Mostrar la aplicación en español.','Show the application in Spanish.'],
+ languageEN:['Mostrar la aplicación en inglés.','Show the application in English.']
+};
+function refreshViewerHelp(){
+ const en=isEn();helpSummary.setAttribute('aria-label',en?'Viewer help and shortcuts':'Ayuda y atajos del visor');
+ helpPanel.innerHTML=en?'<strong>Viewer help</strong><p><b>Zoom:</b> use the mouse wheel over the image.</p><p><b>Move:</b> select “Move” and drag, or hold <kbd>Space</kbd> while dragging. The middle mouse button also works.</p><p><b>Measure:</b> choose a tool and mark the points shown in the guide.</p><p><b>Labels:</b> select “Add label”, click the image and enter text.</p><p><b>Reset image:</b> restores zoom, position, orientation and display settings.</p>':'<strong>Ayuda del visor</strong><p><b>Zoom:</b> mueve la rueda del ratón sobre la imagen.</p><p><b>Mover:</b> selecciona «Mover» y arrastra, o mantén pulsada la <kbd>barra espaciadora</kbd> mientras arrastras. También puedes usar el botón central del ratón.</p><p><b>Medir:</b> elige una herramienta y marca los puntos que indica la guía.</p><p><b>Rótulos:</b> selecciona «Añadir rótulo», pulsa sobre la imagen y escribe el texto.</p><p><b>Restablecer imagen:</b> recupera el zoom, la posición, la orientación y los ajustes de visualización.</p>';
+ for(const [id,tips] of Object.entries(viewerTips)){const el=document.getElementById(id);if(el)el.title=tips[en?1:0]}
+}
+for(const id of ['languageES','languageEN'])document.getElementById(id).addEventListener('click',refreshViewerHelp);
+viewerHelp.addEventListener('keydown',e=>{if(e.key==='Escape'){viewerHelp.open=false;helpSummary.focus()}});
+const viewerHelpStyle=document.createElement('style');
+viewerHelpStyle.textContent='.workspacehead{position:relative}.viewer-help{position:relative;align-self:center;flex:none}.viewer-help summary{list-style:none;display:grid;place-items:center;width:24px;height:24px;border:1px solid #80a399;border-radius:50%;font-weight:700;color:#b9d8ca;cursor:pointer;font:700 13px sans-serif}.viewer-help summary::-webkit-details-marker{display:none}.viewer-help summary:focus-visible{outline:2px solid #83d8b8;outline-offset:3px}.viewer-help-panel{visibility:hidden;opacity:0;pointer-events:none;position:absolute;z-index:10;right:0;top:31px;width:min(340px,80vw);padding:16px 18px;background:#192823;color:#deeee7;border:1px solid #466359;border-radius:10px;box-shadow:0 12px 32px #0006;font-size:12px;line-height:1.5;transition:opacity .15s}.viewer-help-panel p{margin:8px 0}.viewer-help-panel p:last-child{margin-bottom:0}.viewer-help:hover .viewer-help-panel,.viewer-help:focus-within .viewer-help-panel,.viewer-help[open] .viewer-help-panel{visibility:visible;opacity:1;pointer-events:auto}.viewer-help kbd{font:inherit;border:1px solid #759b8a;border-radius:4px;padding:1px 4px}body.light .viewer-help summary{color:#365c4e;border-color:#7ba593}body.light .viewer-help-panel{background:#f5fffa;color:#213a2e;border-color:#b8d6c7;box-shadow:0 12px 32px #2343}@media(max-width:650px){.viewer-help{position:absolute;top:0;right:0}}';
+document.head.append(viewerHelpStyle);refreshViewerHelp();
